@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation / README
+    url: https://github.com/mpivarski/Transcriber-CLI-V3/blob/main/README.md
+    about: Read the project README for setup and usage instructions.
+  - name: 💬 Discussions
+    url: https://github.com/mpivarski/Transcriber-CLI-V3/discussions
+    about: Ask questions, share ideas, or chat with the community in GitHub Discussions.

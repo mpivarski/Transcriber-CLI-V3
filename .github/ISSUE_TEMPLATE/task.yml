@@ -1,0 +1,68 @@
+name: Task / Backlog Item
+description: Track a development task, chore, or backlog item for the project
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to create a task or backlog item. Tasks are units of work that need to be completed as part of development.
+
+  - type: textarea
+    id: title_description
+    attributes:
+      label: Task description
+      description: A clear description of the work to be done.
+      placeholder: "Refactor the CSV output module to support configurable column ordering"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: |
+        What does "done" look like? List the conditions that must be met for this task to be considered complete.
+      placeholder: |
+        - [ ] CSV columns can be reordered via a config file
+        - [ ] Existing tests pass
+        - [ ] New unit tests added for the column-ordering logic
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area of the codebase
+      description: Which part of the project does this task relate to?
+      options:
+        - Transcription / AI models
+        - Validation (scientific names, duplicates, etc.)
+        - Image segmentation
+        - CSV / output
+        - CLI interface
+        - AWS / credentials
+        - Documentation
+        - Testing / CI
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Links, references, or any other information relevant to this task.
+    validations:
+      required: false

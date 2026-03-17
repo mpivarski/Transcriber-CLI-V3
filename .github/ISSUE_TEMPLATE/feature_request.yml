@@ -1,0 +1,64 @@
+name: Feature Request / Backlog Item
+description: Suggest a new feature or improvement for the Transcriber CLI
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose new features, improvements, or backlog items. All suggestions are welcome!
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature summary
+      description: A short, clear summary of the feature or improvement you are proposing.
+      placeholder: "Add support for GBIF validation of scientific names"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem this solves
+      description: |
+        Is your feature request related to a problem? Please describe it.
+        A clear and concise description of what the problem is.
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to your workflow?
+      options:
+        - Low – nice to have
+        - Medium – would improve my workflow noticeably
+        - High – blocking or significantly impacting my work
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, mockups, or screenshots about the feature request here.
+    validations:
+      required: false

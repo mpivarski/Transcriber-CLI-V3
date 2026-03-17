@@ -1,0 +1,89 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in the Transcriber CLI
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I run `python TranscribeCLI.py` and select model X, the following error occurs..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Run `python TranscribeCLI.py`
+        2. Select model '...'
+        3. Enter run name '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include any error messages or stack traces.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: AI Model used
+      description: Which AWS Bedrock model were you using when the bug occurred?
+      options:
+        - Claude 3 Sonnet
+        - Claude 3.7 Sonnet
+        - Claude 4 Sonnet
+        - Claude 4.5 Sonnet
+        - Claude 4 Opus
+        - Claude 4.1 Opus
+        - LLama 3.2 90b
+        - LLama 4 17b
+        - Amazon Nova-lite
+        - Amazon Nova-pro
+        - Amazon Nova-Premier
+        - Mistral Pixtral Large
+        - Not applicable / Unknown
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Please provide details about your environment.
+      value: |
+        - OS: [e.g. macOS 14, Windows 11, Ubuntu 22.04]
+        - Python version: [e.g. 3.11]
+        - AWS region: [e.g. us-east-1]
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, screenshots, or log output about the problem here.
+    validations:
+      required: false

@@ -11,6 +11,12 @@
 
 A command-line interface tool for transcribing herbarium label details from images using AWS Bedrock AI models.
 
+[![Issues](https://img.shields.io/github/issues/mpivarski/Transcriber-CLI-V3)](https://github.com/mpivarski/Transcriber-CLI-V3/issues)
+[![Contributing](https://img.shields.io/badge/contributing-guide-blue)](./CONTRIBUTING.md)
+
+> 💡 **Want to report a bug, request a feature, or track work?**  
+> Head to the [**Issues tab**](https://github.com/mpivarski/Transcriber-CLI-V3/issues) or read the [**Contributing Guide**](./CONTRIBUTING.md) to learn how to use our project board, backlog, and issue templates.
+
 ## Overview
 
 Transcriber CLI is designed to process and transcribe text from herbarium specimen images:
@@ -123,7 +129,18 @@ The tool uses specialized prompts for herbarium label transcription, located in 
 - Modify prompts in the `Prompts/` directory to adjust transcription behavior
 - Add or remove models in the `AVAILABLE_MODELS` list in each transcriber module (This is updated frequently so you dont have to really)
 
+## Contributing & Project Board
 
+We track all bugs, features, and backlog items openly using GitHub Issues and a GitHub Project board.
+
+- 📋 **[Project Board](https://github.com/users/mpivarski/projects)** – view the backlog, in-progress work, and completed items
+- 🐛 **[Report a Bug](https://github.com/mpivarski/Transcriber-CLI-V3/issues/new?template=bug_report.yml)**
+- 💡 **[Request a Feature](https://github.com/mpivarski/Transcriber-CLI-V3/issues/new?template=feature_request.yml)**
+- ✅ **[Add a Backlog Task](https://github.com/mpivarski/Transcriber-CLI-V3/issues/new?template=task.yml)**
+
+Everyone is welcome to open issues and participate. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full details.
+
+---
 
 Created by Riley Herbst, for the Field Museum. With much thanks to the following: Matt Von Konrat, Jeff Gwilliam, Dan Stille 
 
