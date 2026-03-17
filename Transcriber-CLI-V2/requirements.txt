@@ -1,4 +1,4 @@
-# Runtime dependencies for Transcriber-CLI-V2
+# Runtime dependencies for Transcriber-CLI-V3
 boto3
 Pillow
 requests
@@ -9,3 +9,5 @@ openvino
 numpy
 paddleocr
 paddlepaddle
+#MP add 3.26 we seem to need this one to run in colab
+pytesseract
