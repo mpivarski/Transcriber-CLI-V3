@@ -31,6 +31,7 @@ def post_chunk(names: List[str], api: str = DEFAULT_API, preferred=None, timeout
     data = r.json()
     return data.get("verifications") or data.get("names") or data
 
+
 def first(obj: dict, *keys: str, default: str = "") -> str:
     if isinstance(obj, dict):
         for k in keys:

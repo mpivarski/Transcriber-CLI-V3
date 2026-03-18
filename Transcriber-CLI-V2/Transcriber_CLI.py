@@ -14,6 +14,8 @@ from pathlib import Path
 import requests
 from urllib.parse import urlparse
 import shutil
+import json
+import pandas as pd
 from datetime import datetime
 import json
 
@@ -129,12 +131,294 @@ def select_segmentation():
 #Local or URL download Images
 def select_image_source():
     while True:
-        choice = input("\nChoose image source:\n1. Local images\n2. URL download\nEnter choice (1-2) or 'back' to go back: ")
-        if choice in ['1', '2']:
-            return choice == '2'  # Returns True for URL, False for local
+        choice = input("\nChoose image source:\n1. Local images\n2. URL download\n3. CSV file with URLs (transcribe missing fields only)\nEnter choice (1-3) or 'back' to go back: ")
+        if choice == '1':
+            return 'local'
+        elif choice == '2':
+            return 'url'
+        elif choice == '3':
+            return 'csv'
         elif choice.lower() == 'back':
             return 'back'
-        print("Please enter 1, 2, or 'back'")
+        print("Please enter 1, 2, 3, or 'back'")
+
+
+# ============================================================
+# CSV-based transcription functions
+# ============================================================
+
+def get_csv_file_path():
+    """Get path to CSV file containing image URLs and existing data."""
+    while True:
+        csv_path = input("\nEnter path to CSV file with image URLs (or 'back' to go back): ").strip()
+        if csv_path.lower() == 'back':
+            return 'back', None
+        
+        if not os.path.exists(csv_path):
+            print(f"Error: File not found at {csv_path}")
+            continue
+        
+        if not csv_path.endswith('.csv'):
+            print("Error: File must be a .csv file")
+            continue
+        
+        # Load and analyze the CSV
+        try:
+            df = pd.read_csv(csv_path)
+            print(f"\n✅ Loaded CSV with {len(df)} rows and {len(df.columns)} columns")
+            return csv_path, df
+        except Exception as e:
+            print(f"Error reading CSV: {e}")
+            continue
+
+
+def select_url_column(df):
+    """Let user select which column contains the image URLs."""
+    print("\n" + "="*60)
+    print("SELECT IMAGE URL COLUMN")
+    print("="*60)
+    print("\nAvailable columns:")
+    
+    # Show columns with sample values
+    for i, col in enumerate(df.columns, 1):
+        sample = str(df[col].iloc[0])[:50] if len(df) > 0 else "N/A"
+        print(f"{i:3d}. {col[:40]:<40} | Sample: {sample}...")
+    
+    while True:
+        choice = input(f"\nSelect column containing image URLs (1-{len(df.columns)}) or 'back': ").strip()
+        if choice.lower() == 'back':
+            return 'back'
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(df.columns):
+                selected_col = df.columns[idx]
+                # Verify it looks like URLs
+                sample_val = str(df[selected_col].iloc[0]) if len(df) > 0 else ""
+                if 'http' in sample_val.lower():
+                    print(f"\n✅ Selected: '{selected_col}' - looks like URLs!")
+                    return selected_col
+                else:
+                    confirm = input(f"Warning: '{selected_col}' doesn't look like URLs. Continue anyway? (y/n): ")
+                    if confirm.lower() in ['y', 'yes']:
+                        return selected_col
+            else:
+                print(f"Please enter a number between 1 and {len(df.columns)}")
+        except ValueError:
+            print("Please enter a valid number or 'back'")
+
+
+def analyze_empty_fields(df, url_column):
+    """Analyze which fields have empty values that need transcription."""
+    print("\n" + "="*60)
+    print("ANALYZING EMPTY FIELDS")
+    print("="*60)
+    
+    # Columns to skip (not useful for transcription)
+    skip_columns = [url_column, 'Unnamed: 0']
+    
+    empty_analysis = {}
+    for col in df.columns:
+        if col in skip_columns:
+            continue
+        # Count empty/null values
+        empty_count = df[col].isna().sum() + (df[col] == "").sum()
+        total = len(df)
+        if empty_count > 0:
+            pct = (empty_count / total) * 100
+            empty_analysis[col] = {'empty': empty_count, 'total': total, 'pct': pct}
+    
+    print("\nFields with missing data:")
+    print("-"*60)
+    for col, stats in sorted(empty_analysis.items(), key=lambda x: x[1]['pct'], reverse=True):
+        print(f"   {col[:35]:<35} | {stats['empty']:>4}/{stats['total']} empty ({stats['pct']:.1f}%)")
+    
+    return empty_analysis
+
+
+def select_fields_to_transcribe(df, url_column, empty_analysis):
+    """Let user select which fields to transcribe."""
+    print("\n" + "="*60)
+    print("SELECT FIELDS TO TRANSCRIBE")
+    print("="*60)
+    
+    # Get columns with empty values
+    empty_cols = list(empty_analysis.keys())
+    
+    if not empty_cols:
+        print("No empty fields found in the CSV!")
+        return []
+    
+    print("\nFields with missing data (select which to transcribe):")
+    for i, col in enumerate(empty_cols, 1):
+        stats = empty_analysis[col]
+        print(f"{i:3d}. {col[:40]:<40} | {stats['empty']} empty ({stats['pct']:.1f}%)")
+    
+    print("\n" + "-"*60)
+    print("Options:")
+    print("  • Enter 'all' to select ALL fields")
+    print("  • Enter numbers separated by commas (e.g., 1,3,5,7)")
+    print("  • Enter a range (e.g., 1-5)")
+    print("  • Combine ranges and numbers (e.g., 1-3,5,7-9)")
+    print("  • Enter 'back' to go back")
+    print("-"*60)
+    
+    while True:
+        choice = input(f"\nSelect fields to transcribe: ").strip().lower()
+        
+        if choice == 'back':
+            return 'back'
+        
+        if choice == 'all':
+            print(f"\n✅ Will transcribe ALL {len(empty_cols)} fields with missing data")
+            return empty_cols
+        
+        # Parse the selection (handles ranges and comma-separated values)
+        selected = []
+        try:
+            parts = choice.split(',')
+            for part in parts:
+                part = part.strip()
+                if '-' in part:
+                    # Handle range (e.g., "1-5")
+                    range_parts = part.split('-')
+                    if len(range_parts) == 2:
+                        start = int(range_parts[0].strip())
+                        end = int(range_parts[1].strip())
+                        for idx in range(start, end + 1):
+                            if 1 <= idx <= len(empty_cols):
+                                field = empty_cols[idx - 1]
+                                if field not in selected:
+                                    selected.append(field)
+                else:
+                    # Handle single number
+                    idx = int(part)
+                    if 1 <= idx <= len(empty_cols):
+                        field = empty_cols[idx - 1]
+                        if field not in selected:
+                            selected.append(field)
+            
+            if selected:
+                print(f"\n✅ Selected {len(selected)} field(s):")
+                for field in selected:
+                    print(f"   • {field}")
+                return selected
+            else:
+                print(f"No valid fields selected. Please enter numbers between 1 and {len(empty_cols)}")
+                
+        except ValueError:
+            print("Invalid input. Please enter 'all', numbers (e.g., 1,3,5), ranges (e.g., 1-5), or 'back'")
+
+
+def download_images_from_csv(df, url_column, download_dir):
+    """Download images from URLs in the CSV file."""
+    if os.path.exists(download_dir):
+        safe_rmtree(download_dir)
+    os.makedirs(download_dir, exist_ok=True)
+    
+    urls = df[url_column].dropna().tolist()
+    print(f"\nDownloading {len(urls)} images from CSV...")
+    
+    url_map = {}
+    row_map = {}  # Map filename to row index for later matching
+    
+    for i, url in enumerate(urls, 1):
+        if not url or not isinstance(url, str) or not url.startswith('http'):
+            continue
+        try:
+            response = requests.get(url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            # Get original filename
+            original_filename = os.path.basename(urlparse(url).path) or f"image_{i}.jpg"
+            filename = f"{i:04d}_{original_filename}"
+            filepath = os.path.join(download_dir, filename)
+            
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            url_map[filename] = url
+            row_map[filename] = i - 1  # Store the DataFrame row index
+            
+            if i % 10 == 0 or i == len(urls):
+                print(f"Downloaded {i}/{len(urls)}: {filename}")
+                
+        except Exception as e:
+            print(f"Failed to download {url}: {e}")
+    
+    # Save mappings
+    map_path = os.path.join(download_dir, 'url_map.json')
+    with open(map_path, 'w', encoding='utf-8') as f:
+        json.dump({'url_map': url_map, 'row_map': row_map}, f, indent=2)
+    
+    print(f"\n✅ Downloaded {len(url_map)} images")
+    return url_map, row_map
+
+
+def merge_transcriptions_to_csv(original_df, transcription_csv_path, url_column, row_map, fields_to_update, output_path):
+    """
+    Merge transcription results back into the original CSV, filling only empty fields.
+    
+    Args:
+        original_df: Original DataFrame with existing data
+        transcription_csv_path: Path to the transcription results CSV
+        url_column: Column name containing image URLs
+        row_map: Mapping of filenames to original row indices
+        fields_to_update: List of field names to update (only if empty)
+        output_path: Where to save the merged CSV
+    """
+    print("\n" + "="*60)
+    print("MERGING TRANSCRIPTIONS INTO ORIGINAL CSV")
+    print("="*60)
+    
+    # Load transcription results
+    transcription_df = pd.read_csv(transcription_csv_path)
+    print(f"Loaded {len(transcription_df)} transcription results")
+    
+    # Create a copy of the original DataFrame
+    merged_df = original_df.copy()
+    
+    updates_made = 0
+    fields_updated = {field: 0 for field in fields_to_update}
+    
+    # Try to match transcriptions to original rows
+    # The transcription CSV should have a filename or image reference
+    for idx, trans_row in transcription_df.iterrows():
+        # Try to find the matching original row
+        # Check if there's an 'image_file' or similar column in transcription
+        image_file = None
+        for col in ['image_file', 'filename', 'image', 'file']:
+            if col in trans_row.index:
+                image_file = trans_row[col]
+                break
+        
+        if image_file and image_file in row_map:
+            orig_idx = row_map[image_file]
+            
+            # Update only empty fields in the original
+            for field in fields_to_update:
+                if field in trans_row.index and field in merged_df.columns:
+                    # Check if original field is empty
+                    orig_value = merged_df.at[orig_idx, field]
+                    is_empty = pd.isna(orig_value) or str(orig_value).strip() == ''
+                    
+                    if is_empty:
+                        new_value = trans_row[field]
+                        if pd.notna(new_value) and str(new_value).strip() != '':
+                            merged_df.at[orig_idx, field] = new_value
+                            fields_updated[field] += 1
+                            updates_made += 1
+    
+    # Save merged CSV
+    merged_df.to_csv(output_path, index=False)
+    
+    print(f"\n✅ Merged transcriptions saved to: {output_path}")
+    print(f"\nTotal updates made: {updates_made}")
+    print("\nUpdates per field:")
+    for field, count in fields_updated.items():
+        print(f"   {field}: {count} values filled")
+    
+    return merged_df
 
 
 #Name the run instead of having a bunch of dates and shitty formatting
@@ -274,43 +558,6 @@ def get_output_base_path():
     # Fallback to home directory if Desktop doesn't exist
     return home_dir / "Finished Transcriptions"
 
-def save_run_state(run_dir, state):
-    
-    state_file = Path(run_dir) / "run_state.json"
-    with open(state_file, 'w', encoding='utf-8') as f:
-        json.dump(state, f, indent=2)
-    
-def load_run_state(run_dir):
-    
-    state_file = Path(run_dir) / "run_state.json"
-    if state_file.exists():
-        with open(state_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return None
-
-def mark_run_complete(run_dir):
-    
-    state = load_run_state(run_dir)
-    if state:
-        state['status'] = 'completed'
-        state['completed_at'] = datetime.utcnow().isoformat() + "Z"
-        save_run_state(run_dir, state)
-
-def find_incomplete_runs():
-   
-    output_base = get_output_base_path()
-    if not output_base.exists():
-        return []
-    
-    incomplete_runs = []
-    for run_dir in output_base.iterdir():
-        if run_dir.is_dir():
-            state = load_run_state(run_dir)
-            if state and state.get('status') == 'in_progress':
-                incomplete_runs.append((run_dir.name, state))
-    
-    return incomplete_runs
-
 #Shows the number of images in the folder just as a double check for things. 
 def show_images_in_folder(folder_path):
     image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
@@ -445,12 +692,67 @@ def configure_transcription():
             step = 'image_source'
             
         elif step == 'image_source':
-            use_urls = select_image_source()
-            if use_urls == 'back':
+            image_source = select_image_source()
+            if image_source == 'back':
                 step = 'prompt'
                 continue
-            config['use_urls'] = use_urls
-            step = 'images_folder'
+            config['image_source'] = image_source
+            
+            # Route to appropriate next step based on source type
+            if image_source == 'csv':
+                step = 'csv_file'
+            else:
+                # For 'local' and 'url', use the old flow
+                config['use_urls'] = (image_source == 'url')
+                step = 'images_folder'
+        
+        # New CSV-based workflow steps
+        elif step == 'csv_file':
+            csv_path, df = get_csv_file_path()
+            if csv_path == 'back':
+                step = 'image_source'
+                continue
+            config['csv_path'] = csv_path
+            config['csv_df'] = df
+            step = 'csv_url_column'
+        
+        elif step == 'csv_url_column':
+            url_column = select_url_column(config['csv_df'])
+            if url_column == 'back':
+                step = 'csv_file'
+                continue
+            config['url_column'] = url_column
+            step = 'csv_fields'
+        
+        elif step == 'csv_fields':
+            empty_analysis = analyze_empty_fields(config['csv_df'], config['url_column'])
+            fields_to_transcribe = select_fields_to_transcribe(
+                config['csv_df'], 
+                config['url_column'], 
+                empty_analysis
+            )
+            if fields_to_transcribe == 'back':
+                step = 'csv_url_column'
+                continue
+            config['fields_to_transcribe'] = fields_to_transcribe
+            config['empty_analysis'] = empty_analysis
+            
+            # Download images from CSV URLs
+            print("\n" + "="*60)
+            print("DOWNLOADING IMAGES FROM CSV")
+            print("="*60)
+            downloads_dir = get_output_base_path() / "temp_csv_downloads"
+            download_dir = str(downloads_dir)
+            url_map, row_map = download_images_from_csv(
+                config['csv_df'], 
+                config['url_column'], 
+                download_dir
+            )
+            config['base_folder'] = download_dir
+            config['folder_name'] = "csv_images"
+            config['url_map'] = url_map
+            config['row_map'] = row_map
+            break
             
         elif step == 'images_folder':
             base_folder, folder_name = get_images_folder(config['use_urls'])
@@ -463,47 +765,6 @@ def configure_transcription():
     
     return config
 
-def resume_run_menu():
-    incomplete_runs = find_incomplete_runs()
-    
-    if not incomplete_runs:
-        print("\nNo incomplete runs found.")
-        input("Press Enter to return to main menu...")
-        return None
-    
-    print("\n" + "="*60)
-    print("INCOMPLETE RUNS")
-    print("="*60)
-    print("Select a run to resume:\n")
-    
-    for i, (run_name, state) in enumerate(incomplete_runs, 1):
-        current_step = state.get('current_step', 'unknown')
-        num_shots = state.get('num_shots', 'unknown')
-        mode = 'Single Shot' if num_shots == 1 else 'Dual Shot'
-        print(f"{i}. {run_name}")
-        print(f"   Mode: {mode}")
-        print(f"   Current step: {current_step}")
-        print(f"   Started: {state.get('started_at', 'unknown')}")
-        print()
-    
-    print("Type 'back' to return to main menu")
-    
-    while True:
-        choice = input("\nEnter run number to resume: ").strip().lower()
-        
-        if choice == 'back':
-            return None
-        
-        try:
-            selection = int(choice)
-            if 1 <= selection <= len(incomplete_runs):
-                run_name, state = incomplete_runs[selection - 1]
-                print(f"\nResuming run: {run_name}")
-                return {'resume': True, 'run_name': run_name, 'state': state}
-            else:
-                print(f"Please enter a number between 1 and {len(incomplete_runs)}")
-        except ValueError:
-            print("Please enter a valid number or 'back'")
 
 def main():
     tprint("Transcriber-CLI-V2")
@@ -512,9 +773,13 @@ def main():
     print("Welcome to the Field Museum transcriber-cli, this is an all-purpose image transcriber.")
     print("(You can type 'back' at any step to return to the previous choice)")
     
-    # Create the main output directory
+    '''
+    Checks if ~/Desktop exists → returns ~/Desktop/Finished Transcriptions
+    Otherwise falls back to ~/Finished Transcriptions
+    '''    
     output_base = get_output_base_path()
     output_base.mkdir(parents=True, exist_ok=True)
+    
     
     print(f"Finished transcriptions will be saved to: {output_base}")
     
@@ -523,12 +788,11 @@ def main():
         print("\n" + "="*60)
         print("MAIN MENU")
         print("="*60)
-        print("1. Start New Transcription Process")
-        print("2. Resume Incomplete Run")
-        print("3. Configure Validation Settings")
-        print("4. Exit")
+        print("1. Start Transcription Process")
+        print("2. Configure Validation Settings")
+        print("3. Exit")
         
-        choice = input("\nEnter your choice (1-4): ").strip()
+        choice = input("\nEnter your choice (1-3): ").strip()
         
         if choice == '1':
             # Configure transcription 
@@ -538,68 +802,27 @@ def main():
             break  # Exit main menu to continue with transcription
             
         elif choice == '2':
-            # Resume an incomplete run
-            config = resume_run_menu()
-            if config is None:  # User went back to main menu
-                continue
-            break  # Exit main menu to continue with resumed transcription
-            
-        elif choice == '3':
             configure_validation_settings()
             continue  # Return to main menu
             
-        elif choice == '4':
+        elif choice == '3':
             print("Goodbye!")
             return
             
         else:
-            print("Invalid choice. Please enter 1, 2, 3, or 4.")
+            print("Invalid choice. Please enter 1, 2, or 3.")
     
     # Continue with transcription process
-    is_resume = config.get('resume', False)
+    run_name = config['run_name']
+    use_segmentation = config['use_segmentation']
+    num_shots = config['num_shots']
+    prompt_path = config['prompt_path']
+    base_folder = config['base_folder']
+    folder_name = config['folder_name']
     
-    if is_resume:
-        # Resuming an existing run
-        run_name = config['run_name']
-        saved_state = config['state']
-        run_output_dir = get_output_base_path() / run_name
-        
-        # Extract config from saved state
-        use_segmentation = saved_state.get('use_segmentation', False)
-        num_shots = saved_state['num_shots']
-        prompt_path = saved_state['prompt_path']
-        base_folder = saved_state['base_folder']
-        folder_name = saved_state.get('folder_name', run_name)
-        
-        print(f"\nResuming run from: {run_output_dir}")
-        print(f"Current step: {saved_state.get('current_step')}")
-        
-    else:
-        # Starting a new run
-        run_name = config['run_name']
-        use_segmentation = config['use_segmentation']
-        num_shots = config['num_shots']
-        prompt_path = config['prompt_path']
-        base_folder = config['base_folder']
-        folder_name = config['folder_name']
-        
-        # Create run-specific output directory
-        run_output_dir = get_output_base_path() / run_name
-        run_output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize run state
-        initial_state = {
-            'status': 'in_progress',
-            'started_at': datetime.utcnow().isoformat() + "Z",
-            'run_name': run_name,
-            'num_shots': num_shots,
-            'use_segmentation': use_segmentation,
-            'prompt_path': prompt_path,
-            'base_folder': base_folder,
-            'folder_name': folder_name,
-            'current_step': 'starting'
-        }
-        save_run_state(run_output_dir, initial_state)
+    # Create run-specific output directory
+    run_output_dir = get_output_base_path() / run_name
+    run_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Handle segmentation if requested
     processing_folder = base_folder  # Default to original folder
@@ -607,49 +830,38 @@ def main():
     if use_segmentation:
         # Create segmentation output folder
         segmentation_output_dir = run_output_dir / "Segmented_Images"
+        segmentation_output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Check if segmentation was already completed
-        if is_resume and segmentation_output_dir.exists() and any(segmentation_output_dir.glob('*')):
-            print(f"\nSegmentation already completed, using existing segmented images from: {segmentation_output_dir}")
+        # Get segmentation settings
+        model_path, classes_to_render = get_segmentation_settings()
+        
+        try:
+            # Run segmentation
+            success_count, total_count = process_images_segmentation(
+                base_folder, 
+                str(segmentation_output_dir), 
+                model_path, 
+                classes_to_render
+            )
+            
+            print(f"\nSegmentation Results:")
+            print(f"Successfully processed: {success_count}/{total_count} images")
+            print(f"Segmented images saved to: {segmentation_output_dir}")
+            
+            # Ask if user wants to continue
+            if not ask_continue_after_segmentation():
+                print("Stopping at segmentation as requested.")
+                print(f"Segmented images can be found at: {segmentation_output_dir}")
+                return
+            
+            # Use segmented images for transcription
             processing_folder = str(segmentation_output_dir)
-        else:
-            segmentation_output_dir.mkdir(parents=True, exist_ok=True)
+            print(f"\nContinuing with transcription using segmented images from: {processing_folder}")
             
-            # Update state
-            state = load_run_state(run_output_dir)
-            state['current_step'] = 'segmentation'
-            save_run_state(run_output_dir, state)
-            
-            # Get segmentation settings
-            model_path, classes_to_render = get_segmentation_settings()
-            
-            try:
-                # Run segmentation
-                success_count, total_count = process_images_segmentation(
-                    base_folder, 
-                    str(segmentation_output_dir), 
-                    model_path, 
-                    classes_to_render
-                )
-                
-                print(f"\nSegmentation Results:")
-                print(f"Successfully processed: {success_count}/{total_count} images")
-                print(f"Segmented images saved to: {segmentation_output_dir}")
-                
-                # Ask if user wants to continue
-                if not ask_continue_after_segmentation():
-                    print("Stopping at segmentation as requested.")
-                    print(f"Segmented images can be found at: {segmentation_output_dir}")
-                    return
-                
-                # Use segmented images for transcription
-                processing_folder = str(segmentation_output_dir)
-                print(f"\nContinuing with transcription using segmented images from: {processing_folder}")
-                
-            except Exception as e:
-                print(f"Error during segmentation: {e}")
-                print("Continuing with original images...")
-                processing_folder = base_folder
+        except Exception as e:
+            print(f"Error during segmentation: {e}")
+            print("Continuing with original images...")
+            processing_folder = base_folder
     
     # Create Raw Transcriptions folder (.json files)
     raw_transcriptions_dir = run_output_dir / "Raw Transcriptions"
@@ -659,45 +871,12 @@ def main():
     
     try:
         if num_shots == 1:
-            # Update state
-            state = load_run_state(run_output_dir)
-            state['current_step'] = 'first_shot'
-            save_run_state(run_output_dir, state)
-            
-            # Get model (use saved model if resuming)
-            if is_resume and 'model_first_shot' in saved_state:
-                model = saved_state['model_first_shot']
-                print(f"\nUsing saved model for image processing: {model}")
-            else:
-                print("\nSelect model for image processing:")
-                model = First_Shot.select_model()
-                # Save model choice
-                state['model_first_shot'] = model
-                save_run_state(run_output_dir, state)
+            print("\nSelect model for image processing:")
+            model = First_Shot.select_model()
             
             # Use run-specific directory for output
             output_dir = run_output_dir
-            
-            # Get already processed images if resuming
-            processed_images = set()
-            if is_resume:
-                # Check for existing JSON files to skip
-                for json_file in output_dir.glob('*.json'):
-                    if 'batch' not in json_file.name:
-                        # Extract image name from JSON filename
-                        # Format: runname_first_shot_imagename.json
-                        try:
-                            with open(json_file, 'r', encoding='utf-8') as f:
-                                data = json.load(f)
-                                if 'image_name' in data:
-                                    processed_images.add(data['image_name'])
-                        except:
-                            pass
-                
-                if processed_images:
-                    print(f"\nResuming: Found {len(processed_images)} already processed images. Skipping those...")
-            
-            First_Shot.process_images(processing_folder, prompt_path, output_dir, run_name, model_id=model, skip_images=processed_images)
+            First_Shot.process_images(processing_folder, prompt_path, output_dir, run_name, model_id=model)
             
             # Convert JSON files to CSV
             print("\n=== Converting JSON files to CSV ===")
@@ -742,118 +921,39 @@ def main():
         else:  # Two shots
             print("\nTwo shots mode: Running first pass, then second pass using first pass results")
             
+            # Select models for both passes upfront
+            print("\n=== Model Selection ===")
+            print("\nSelect model for first pass processing:")
+            model1 = First_Shot.select_model()
+            print("\nSelect model for second pass processing:")
+            model2 = Second_Shot.select_model()
+            
             # Create temporary processing directories
             temp_first_dir = run_output_dir / "temp_first"
             temp_second_dir = run_output_dir / "temp_second"
             temp_first_dir.mkdir(exist_ok=True)
             temp_second_dir.mkdir(exist_ok=True)
             
-            # Determine if we need to run first shot
-            batch_json_path = None
-            first_shot_complete = False
+            # Run first shot
+            print("\n=== Running First Pass ===")
+            First_Shot.process_images(processing_folder, 
+                          prompt_path, temp_first_dir, 
+                          run_name, 
+                          model_id=model1)
+            print("\n=== Converting First Pass JSON files to CSV ===")
+            convert_json_to_csv(str(temp_first_dir))
             
-            if is_resume:
-                # Check if first shot was already completed
-                batch_file = list(temp_first_dir.glob(f"{run_name}_first_shot_transcriptions_batch.json"))
-                if batch_file:
-                    batch_json_path = batch_file[0]
-                    first_shot_complete = True
-                    print(f"\nFirst shot already completed, skipping to second shot")
+            # Find the batch JSON file from first shot
+            batch_file = list(temp_first_dir.glob(f"{run_name}_first_shot_transcriptions_batch.json"))
+            if not batch_file:
+                print("Error: Could not find first shot batch JSON file. Skipping second shot.")
+                return
             
-            # Select models for both passes upfront (or use saved models)
-            if is_resume and 'model_first_shot' in saved_state:
-                model1 = saved_state['model_first_shot']
-                model2 = saved_state.get('model_second_shot')
-                print(f"\nUsing saved model for first pass: {model1}")
-                if model2:
-                    print(f"Using saved model for second pass: {model2}")
-                else:
-                    print("\nSelect model for second pass processing:")
-                    model2 = Second_Shot.select_model()
-                    state = load_run_state(run_output_dir)
-                    state['model_second_shot'] = model2
-                    save_run_state(run_output_dir, state)
-            else:
-                print("\n=== Model Selection ===")
-                print("\nSelect model for first pass processing:")
-                model1 = First_Shot.select_model()
-                print("\nSelect model for second pass processing:")
-                model2 = Second_Shot.select_model()
-                
-                # Save model choices
-                state = load_run_state(run_output_dir)
-                state['model_first_shot'] = model1
-                state['model_second_shot'] = model2
-                save_run_state(run_output_dir, state)
-            
-            # Run first shot if not already complete
-            if not first_shot_complete:
-                # Update state
-                state = load_run_state(run_output_dir)
-                state['current_step'] = 'first_shot'
-                save_run_state(run_output_dir, state)
-                
-                print("\n=== Running First Pass ===")
-                
-                # Get already processed images if resuming
-                processed_images = set()
-                if is_resume:
-                    # Check for existing JSON files to skip
-                    for json_file in temp_first_dir.glob('*.json'):
-                        if 'batch' not in json_file.name:
-                            try:
-                                with open(json_file, 'r', encoding='utf-8') as f:
-                                    data = json.load(f)
-                                    if 'image_name' in data:
-                                        processed_images.add(data['image_name'])
-                            except:
-                                pass
-                    
-                    if processed_images:
-                        print(f"\nResuming: Found {len(processed_images)} already processed images in first shot. Skipping those...")
-                
-                First_Shot.process_images(processing_folder, 
-                              prompt_path, temp_first_dir, 
-                              run_name, 
-                              model_id=model1,
-                              skip_images=processed_images)
-            if not first_shot_complete:
-                print("\n=== Converting First Pass JSON files to CSV ===")
-                convert_json_to_csv(str(temp_first_dir))
-                
-                # Find the batch JSON file from first shot
-                batch_file = list(temp_first_dir.glob(f"{run_name}_first_shot_transcriptions_batch.json"))
-                if not batch_file:
-                    print("Error: Could not find first shot batch JSON file. Skipping second shot.")
-                    return
-                
-                batch_json_path = batch_file[0]
-                print(f"\nFound first shot batch JSON: {batch_json_path}")
-            
-            # Update state for second shot
-            state = load_run_state(run_output_dir)
-            state['current_step'] = 'second_shot'
-            save_run_state(run_output_dir, state)
+            batch_json_path = batch_file[0]
+            print(f"\nFound first shot batch JSON: {batch_json_path}")
             
             # Run second shot with the JSON file from first shot
             print("\n=== Running Second Pass using First Pass Results ===")
-            
-            # Get already processed images if resuming
-            processed_images = set()
-            if is_resume:
-                # Check for existing JSON files to skip
-                for json_file in temp_second_dir.glob('*.json'):
-                    if 'batch' not in json_file.name:
-                        try:
-                            with open(json_file, 'r', encoding='utf-8') as f:
-                                data = json.load(f)
-                                if 'image_name' in data:
-                                    processed_images.add(data['image_name'])
-                        except:
-                            pass
-                
-                if processed_images:
-                    print(f"\nResuming: Found {len(processed_images)} already processed images in second shot. Skipping those...")
             
             # Process second shot using first shot results
             Second_Shot.process_with_first_shot(
@@ -862,8 +962,7 @@ def main():
             batch_json_path, 
             temp_second_dir, 
             run_name, 
-            model_id=model2,
-            skip_images=processed_images
+            model_id=model2
             )
             
             # Convert second shot JSON files to CSV
@@ -923,9 +1022,6 @@ def main():
         print("\n=== Generating Cost Analysis Report ===")
         cost_tracker.save_report_to_desktop(run_name, target_dir=str(run_output_dir))
         
-        # Mark run as complete
-        mark_run_complete(run_output_dir)
-        
     except Exception as e:
         print(f"\nError during transcription process: {str(e)}")
         # Still generate cost report even if there was an error
@@ -934,3 +1030,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
