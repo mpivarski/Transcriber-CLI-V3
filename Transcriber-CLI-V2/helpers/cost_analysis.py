@@ -20,8 +20,8 @@ class CostTracker:
     # AWS Bedrock pricing per 1K tokens (updated from AWS pricing page)
     MODEL_PRICING = {
         "us.anthropic.claude-3-sonnet-20240229-v1:0": {
-            "input": 0.003,  # $3 per 1M input tokens
-            "output": 0.015  # $15 per 1M output tokens
+            "input": 0.003,  # $3 per 1M input tokens, 19Mar2026
+            "output": 0.015  # $15 per 1M output tokens, 19Mar2026
         },
         "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {
             "input": 0.003,  # $3 per 1M input tokens, 19Mar2026
@@ -32,12 +32,12 @@ class CostTracker:
             "output": 0.00125  # $1.25 per 1M output tokens, 19Mar2026
         },
         "us.anthropic.claude-3-opus-20240229-v1:0": {
-            "input": 0.015,  # $15 per 1M input tokens
-            "output": 0.075  # $75 per 1M output tokens
+            "input": 0.015,  # $15 per 1M input tokens, 19Mar2026
+            "output": 0.075  # $75 per 1M output tokens, 19Mar2026
         },
          "us.anthropic.claude-opus-4-5-20251101-v1:0": {
-            "input": 0.006,  # $6 per 1M input tokens
-            "output": 0.0225  # $22.5 per 1M output tokens
+            "input": 0.005,  # $5 per 1M input tokens, 19Mar2026
+            "output": 0.025  # $25 per 1M output tokens, 19Mar2026
         },
         "us.meta.llama3-2-90b-instruct-v1:0": {
             "input": 0.00072,  # $0.72 per 1M input tokens, 19Mra2026
@@ -56,16 +56,16 @@ class CostTracker:
             "output": 0.0001  # $0.1 per 1M output tokens, 19Mar2026
         },
         "us.meta.llama3-3-instruct-70b-v1:0": {
-            "input": 0.00072,  # $0.72 per 1M input tokens
-            "output": 0.00072  # $0.72 per 1M output tokens
+            "input": 0.00001,  # $0.10 per 1M input tokens, 19Mar2026
+            "output": 0.000032  # $0.32 per 1M output tokens, 19Mar2026
         },
         "us.meta.llama4-maverick-v1:0": {
-            "input": 0.00024,  # $0.24 per 1M input tokens
-            "output": 0.00097  # $0.97 per 1M output tokens
+            "input": 0.00024,  # $0.24 per 1M input tokens, 1Mar2026
+            "output": 0.00097  # $0.97 per 1M output tokens, 19Mar2026
         },
         "us.meta.llama4-scout-v1:0": {
-            "input": 0.00017,  # $0.17 per 1M input tokens
-            "output": 0.00066  # $0.66 per 1M output tokens
+            "input": 0.00017,  # $0.17 per 1M input tokens, 19Mar2026
+            "output": 0.00066  # $0.66 per 1M output tokens, 19Mar2026
         },
         "us.amazon.nova-2-lite-v1:0": {
             "input": 0.0003,  # $0.3 per 1M input tokens, 19Mar2026
@@ -76,44 +76,44 @@ class CostTracker:
             "output": 0.0125  # $12.5 per 1M output tokens, 19Mar2026
         },
         "us.amazon.nova-pro-v1:0": {
-            "input": 0.0008,  # $0.8 per 1M input tokens
-            "output": 0.0032  # $3.2 per 1M output tokens
+            "input": 0.0008,  # $0.8 per 1M input tokens, 19Mar2026
+            "output": 0.0032  # $3.2 per 1M output tokens, 19Mar2026
         },
         "us.amazon.nova-lite-v1:0": {
-            "input": 0.00006,  # $0.06 per 1M input tokens
-            "output": 0.00024  # $0.24 per 1M output tokens
+            "input": 0.00006,  # $0.06 per 1M input tokens, 19Mar2026
+            "output": 0.00024  # $0.24 per 1M output tokens, 19Mar2026
         },
         "us.amazon.nova-micro-v1:0": {
-            "input": 0.000035,  # $0.035 per 1M input tokens
-            "output": 0.00014  # $0.14 per 1M output tokens
+            "input": 0.000035,  # $0.035 per 1M input tokens, 19Mar2026
+            "output": 0.00014  # $0.14 per 1M output tokens, 19Mar2026
         },
         "us.mistral.pixtral-large-2411-v1:0": {
-            "input": 0.003,  # $3 per 1M input tokens
-            "output": 0.009  # $9 per 1M output tokens
+            "input": 0.002,  # $2 per 1M input tokens, 19Mar2026
+            "output": 0.006  # $6 per 1M output tokens, 19Mar2026
         },
         "us.mistral.mistral-large-2407-v1:0": {
-            "input": 0.003,  # $3 per 1M input tokens
-            "output": 0.009  # $9 per 1M output tokens
+            "input": 0.002,  # $2 per 1M input tokens, 19Mar2026
+            "output": 0.006  # $6 per 1M output tokens, 19Mar2026
         },
         "us.mistral.mistral-small-2402-v1:0": {
-            "input": 0.0002,  # $0.2 per 1M input tokens
-            "output": 0.0006  # $0.6 per 1M output tokens
+            "input": 0.0002,  # $1 per 1M input tokens, 19Mar2026
+            "output": 0.0006  # $3 per 1M output tokens, 19Mar2026
         },
         "us.mistral.mistral-medium-2312-v1:0": {
-            "input": 0.0006,  # $0.6 per 1M input tokens
-            "output": 0.0018  # $1.8 per 1M output tokens
+            "input": 0.0004,  # $0.4 per 1M input tokens, 19Mar2026
+            "output": 0.002  # $2 per 1M output tokens, 19Mar2026
         },
         "us.mistral.mistral-large-3-675b-instruct": {
-            "input": 0.00050,  # $0.6 per 1M input tokens
-            "output": 0.00150  # $1.8 per 1M output tokens
+            "input": 0.00050,  # $0.5 per 1M input tokens, 19Mar2026
+            "output": 0.00150  # $1.5 per 1M output tokens, 19Mar2026
         },
         "us.qwen.qwen3-vl-235b-a22b": {
-            "input": 0.00053,  # $0.6 per 1M input tokens
-            "output": 0.00266  # $1.8 per 1M output tokens
+            "input": 0.00026,  # $0.26 per 1M input tokens, 19Mar2026
+            "output": 0.0009  # $0.9 per 1M output tokens, 19Mar2026
         },
         "us.google.gemma-3-27b-it": {
-            "input": 0.00023,  # $0.6 per 1M input tokens
-            "output": 0.00038  # $1.8 per 1M output tokens
+            "input": 0.00008,  # $0.08 per 1M input tokens, 19Mar2026
+            "output": 0.00016  # $0.16 per 1M output tokens, 19Mar2026
         }
     }
     
