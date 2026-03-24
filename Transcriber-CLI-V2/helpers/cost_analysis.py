@@ -38,6 +38,10 @@ class CostTracker:
          "us.anthropic.claude-opus-4-5-20251101-v1:0": {
             "input": 0.005,  # $5 per 1M input tokens, 19Mar2026
             "output": 0.025  # $25 per 1M output tokens, 19Mar2026
+         },
+        "us.GPT-4o": {
+            "input": 0.0025,  # $2.50 per 1M input tokens, 19Mra2026
+            "output": 0.010  # $10.00 per 1M output tokens, 19Mar2026
         },
         "us.meta.llama3-2-90b-instruct-v1:0": {
             "input": 0.00072,  # $0.72 per 1M input tokens, 19Mra2026
