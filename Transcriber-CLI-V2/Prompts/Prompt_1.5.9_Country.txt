@@ -119,7 +119,6 @@ Please Do NOT add a header for the response. This includes a summary or any othe
     - Do not abbreviate. Convert to full country names.
     - Preserve original spelling, accents, and capitalization
     - If the country is not explicitly written, infer it only from visible locality text
-    - If multiple countries appear, select the most specific or primary country mentioned.
     - If uncertain or if multiple countries appear, select the most specific or primary country mentioned. 
 
 **firstPoliticalUnit**: (First-order administrative division)
