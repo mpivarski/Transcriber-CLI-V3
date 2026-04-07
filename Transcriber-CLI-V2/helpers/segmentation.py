@@ -485,7 +485,7 @@ def get_segmentation_settings():
 
     # Use fixed model path (adjust to your repo layout)
     model_path = os.path.expanduser(
-        "~/Documents/GitHub/Transcriber-CLI-V2/Transcriber-CLI-V2/helpers/SegmentationModels/RoboFlowModels/best.xml"
+        "/content/Transcriber-CLI-V3/Transcriber-CLI-V2/helpers/SegmentationModels/RoboFlowModels/best.xml"
     )
     print(f"Using model: {model_path}")
 
