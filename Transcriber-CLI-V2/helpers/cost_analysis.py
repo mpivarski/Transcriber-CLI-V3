@@ -111,6 +111,10 @@ class CostTracker:
             "input": 0.00050,  # $0.5 per 1M input tokens, 19Mar2026
             "output": 0.00150  # $1.5 per 1M output tokens, 19Mar2026
         },
+        "us.mistral.mistral-large-2502-instruct": {
+            "input": 0.002,  # $2.0 per 1M input tokens, 07Apr2026
+            "output": 0.006  # $6.0 per 1M output tokens, 07Apr2026
+        },
         "us.qwen.qwen3-vl-235b-a22b": {
             "input": 0.00026,  # $0.26 per 1M input tokens, 19Mar2026
             "output": 0.0009  # $0.9 per 1M output tokens, 19Mar2026
