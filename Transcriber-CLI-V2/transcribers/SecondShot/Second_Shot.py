@@ -272,10 +272,10 @@ Please verify the following transcription against the image and correct any erro
                 If you find information that is not entered or can be applied to new fields such as first and second political unit and Municipality. 
                 If you find that one of the fields for location is in an incorrect field please move it to the correct field. 
                 If There is a lower level location such as municipality, but no country. Please work your way up and insert all higher level locations.
-                Correct any mispelled locations of all ranges. Use georefrenced knowledge.
+                Correct any mispelled locations of all ranges. Use georeferenced knowledge.
                 The Locality field contains a lot of clues as to detailed locations
                 Please enter the information
-                Do not Create any new Fields, The fields set are as standard and dont need to be expanded upon
+                Do not Create any new Fields, The fields set are as standard and do not need to be expanded upon
                 Do not say anything else, please just return the corrected transcription"""
             
             # Create temporary prompt file with explicit UTF-8 encoding
