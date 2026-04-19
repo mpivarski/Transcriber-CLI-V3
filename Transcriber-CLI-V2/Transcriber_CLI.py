@@ -364,6 +364,58 @@ def get_images_folder(use_urls):
             return folder_path, os.path.basename(folder_path)
 
 
+def get_csv_reference_file():
+    """Ask the user if they want to attach a CSV reference file for the Second Shot prompt.
+    
+    Returns the validated path string, or None if the user skips.
+    """
+    print("\n" + "-"*60)
+    print("OPTIONAL: CSV Reference File for Second Shot")
+    print("-"*60)
+    print("You can supply a CSV file whose contents will be sent to the")
+    print("model during the Second Shot to aid verification.")
+    print("Example uses: known location names, species lists, collector records.")
+
+    while True:
+        choice = input("\nInclude a CSV reference file? (y/n or 'back'): ").strip().lower()
+        if choice in ['n', 'no']:
+            print("  No CSV file will be used.")
+            return None
+        elif choice == 'back':
+            return 'back'
+        elif choice in ['y', 'yes']:
+            break
+        else:
+            print("  Please enter 'y', 'n', or 'back'.")
+
+    while True:
+        csv_path = input("\nEnter the full path to the CSV file (or 'skip' / 'back'): ").strip()
+        if csv_path.lower() in ['skip', 'none']:
+            return None
+        if csv_path.lower() == 'back':
+            return 'back'
+        if not csv_path:
+            print("  Path cannot be empty. Try again or type 'skip'.")
+            continue
+        if not os.path.isfile(csv_path):
+            print(f"  ✗ File not found: {csv_path}")
+            print("  Check the path and try again, or type 'skip' to proceed without a CSV.")
+            continue
+        if not csv_path.lower().endswith('.csv'):
+            confirm = input(f"  Warning: '{os.path.basename(csv_path)}' doesn't look like a .csv file. Use it anyway? (y/n): ").strip().lower()
+            if confirm not in ['y', 'yes']:
+                continue
+        # Warn on large files
+        size_kb = os.path.getsize(csv_path) / 1024
+        if size_kb > 50:
+            print(f"  Warning: This file is {size_kb:.1f} KB. Large files increase token costs.")
+            confirm = input("  Continue anyway? (y/n): ").strip().lower()
+            if confirm not in ['y', 'yes']:
+                continue
+        print(f"  ✓ CSV file accepted: {csv_path}")
+        return csv_path
+
+
 def rename_csv_files(source_dir, run_name, shot_type):
     for csv_file in source_dir.glob('*.csv'):
         new_name = f"{run_name}_{shot_type}.csv"
@@ -459,8 +511,20 @@ def configure_transcription():
                 continue
             config['base_folder'] = base_folder
             config['folder_name'] = folder_name
+            # Only ask about CSV when running two shots
+            if config.get('num_shots') == 2:
+                step = 'csv_file'
+            else:
+                break
+
+        elif step == 'csv_file':
+            result = get_csv_reference_file()
+            if result == 'back':
+                step = 'images_folder'
+                continue
+            config['csv_file'] = result  # None means user skipped
             break
-    
+
     return config
 
 def resume_run_menu():
@@ -570,9 +634,12 @@ def main():
         prompt_path = saved_state['prompt_path']
         base_folder = saved_state['base_folder']
         folder_name = saved_state.get('folder_name', run_name)
+        csv_file = saved_state.get('csv_file')  # None if not saved or not used
         
         print(f"\nResuming run from: {run_output_dir}")
         print(f"Current step: {saved_state.get('current_step')}")
+        if csv_file:
+            print(f"Using saved CSV reference file: {csv_file}")
         
     else:
         # Starting a new run
@@ -582,6 +649,7 @@ def main():
         prompt_path = config['prompt_path']
         base_folder = config['base_folder']
         folder_name = config['folder_name']
+        csv_file = config.get('csv_file')  # None if one-shot or user skipped
         
         # Create run-specific output directory
         run_output_dir = get_output_base_path() / run_name
@@ -597,6 +665,7 @@ def main():
             'prompt_path': prompt_path,
             'base_folder': base_folder,
             'folder_name': folder_name,
+            'csv_file': csv_file,
             'current_step': 'starting'
         }
         save_run_state(run_output_dir, initial_state)
@@ -856,14 +925,20 @@ def main():
                     print(f"\nResuming: Found {len(processed_images)} already processed images in second shot. Skipping those...")
             
             # Process second shot using first shot results
+            if csv_file:
+                print(f"\n  CSV reference file will be included in Second Shot prompt: {csv_file}")
+            else:
+                print("\n  No CSV reference file will be used for Second Shot.")
+
             Second_Shot.process_with_first_shot(
-            processing_folder, 
-            prompt_path, 
-            batch_json_path, 
-            temp_second_dir, 
-            run_name, 
-            model_id=model2,
-            skip_images=processed_images
+                processing_folder,
+                prompt_path,
+                batch_json_path,
+                temp_second_dir,
+                run_name,
+                model_id=model2,
+                skip_images=processed_images,
+                csv_file=csv_file
             )
             
             # Convert second shot JSON files to CSV

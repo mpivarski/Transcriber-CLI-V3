@@ -91,6 +91,16 @@ def _clean_response_text(response_text):
     
     return response_text
 
+def _load_csv_content(csv_path):
+    """Read a CSV file and return its contents as a plain string for prompt injection."""
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+        return content
+    except Exception as e:
+        print(f"Warning: Could not read CSV reference file '{csv_path}': {e}")
+        return None
+
 def process_image(image_path, prompt_path, model_id):
     """Process a single image with the given prompt"""
     bedrock_runtime = boto3.client("bedrock-runtime")
@@ -131,7 +141,7 @@ def process_image(image_path, prompt_path, model_id):
     print(response_text)
     return response_text
 
-def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None):
+def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None, csv_file=None):
     """Verify and correct first shot transcription results
     
     Args:
@@ -261,13 +271,24 @@ def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, m
             # Replace any remaining problematic characters
             first_shot_text = first_shot_text.encode('utf-8', errors='replace').decode('utf-8')
             
+            # Build optional CSV context block
+            csv_context = ""
+            if csv_file and os.path.isfile(csv_file):
+                csv_content = _load_csv_content(csv_file)
+                if csv_content:
+                    csv_context = (
+                        "\n\nReference CSV Data (use this to cross-check and correct "
+                        "location names, collector names, and other structured fields):\n"
+                        f"```\n{csv_content}\n```\n"
+                    )
+
             # Create verification prompt
             verification_prompt = f"""You are an expert Botanist and Geographer with a Ph.D.-level understanding, acting as a verifier reviewing a herbarium label transcription.
 
 Please verify the following transcription against the image and correct any errors:
 
 {first_shot_text}
-
+{csv_context}
                 Return the corrected transcription in the same format. If the transcription is accurate, return it unchanged.
                 If you find information that is not entered or can be applied to new fields such as first and second political unit and Municipality. 
                 If you find that one of the fields for location is in an incorrect field please move it to the correct field. 
@@ -344,7 +365,7 @@ Please verify the following transcription against the image and correct any erro
     return all_transcriptions
 
 # Backward compatibility alias
-def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None):
+def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None, csv_file=None):
     """Backward compatibility wrapper for verify_first_shot
     
     Args:
@@ -355,8 +376,9 @@ def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, outp
         run_name: Name of the run
         model_id: Model ID to use for verification
         skip_images: Set of image names to skip (for resuming runs)
+        csv_file: Optional path to a CSV reference file to inject into the prompt
     """
-    return verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id, skip_images)
+    return verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id, skip_images, csv_file=csv_file)
 
 if __name__ == "__main__":
     print("Taking Another Look...")
