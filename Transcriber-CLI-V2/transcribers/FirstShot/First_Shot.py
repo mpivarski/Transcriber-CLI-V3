@@ -1,4 +1,5 @@
-import boto3
+#import boto3
+import anthropic
 from PIL import Image
 import io
 import os
