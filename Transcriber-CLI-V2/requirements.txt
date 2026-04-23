@@ -11,3 +11,4 @@ paddleocr
 paddlepaddle
 #MP add 3.26 we seem to need this one to run in colab
 pytesseract
+beautifulsoup4
