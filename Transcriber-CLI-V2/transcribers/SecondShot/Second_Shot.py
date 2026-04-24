@@ -102,7 +102,12 @@ def _load_csv_content(csv_path):
         return None
 
 def process_image(image_path, prompt_path, model_id):
-    """Process a single image with the given prompt"""
+    """Process a single image with the given prompt.
+    
+    Returns:
+        tuple: (response_text, input_tokens, output_tokens) using actual
+               token counts from the Bedrock API response.
+    """
     bedrock_runtime = boto3.client("bedrock-runtime")
     
     # Convert and standardize image
@@ -132,14 +137,14 @@ def process_image(image_path, prompt_path, model_id):
     
     response_text = response["output"]["message"]["content"][0]["text"]
     
-    # Track cost
-    input_tokens = cost_tracker.estimate_tokens(user_message)
-    output_tokens = cost_tracker.estimate_tokens(response_text, is_output=True)
-    cost_tracker.track_request(model_id, input_tokens, output_tokens)
+    # Use actual token counts reported by Bedrock (not estimates)
+    usage = response.get("usage", {})
+    input_tokens = usage.get("inputTokens", cost_tracker.estimate_tokens(user_message))
+    output_tokens = usage.get("outputTokens", cost_tracker.estimate_tokens(response_text, is_output=True))
     
     response_text = _clean_response_text(response_text)
     print(response_text)
-    return response_text
+    return response_text, input_tokens, output_tokens
 
 def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None, csv_file=None):
     """Verify and correct first shot transcription results
@@ -306,11 +311,11 @@ Please verify the following transcription against the image and correct any erro
                     temp_prompt.write(verification_prompt)
                     temp_prompt_path = temp_prompt.name
                 
-                response_text = process_image(image_path, temp_prompt_path, model_id)
+                response_text, input_tokens, output_tokens = process_image(image_path, temp_prompt_path, model_id)
                 
-                # Calculate tokens
-                input_tokens = cost_tracker.estimate_tokens(verification_prompt)
-                output_tokens = cost_tracker.estimate_tokens(response_text, is_output=True)
+                # Track actual tokens in the cost tracker
+                cost_tracker.track_request(model_id, input_tokens, output_tokens)
+                print(f"  Tokens — Input: {input_tokens:,}  |  Output: {output_tokens:,}")
                 
                 # Save individual JSON, keep original image_url if any
                 json_filepath = save_json_transcription(

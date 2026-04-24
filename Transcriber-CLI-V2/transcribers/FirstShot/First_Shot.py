@@ -83,7 +83,12 @@ def convert_to_png(image_path):
     return png_bytes.getvalue()
 
 def process_image(image_path, prompt_path, model_id=None):
+    """Process a single image with the given prompt.
     
+    Returns:
+        tuple: (response_text, input_tokens, output_tokens) using actual
+               token counts from the Bedrock API response.
+    """
     # Initialize Bedrock client
     bedrock_runtime = boto3.client("bedrock-runtime")
     
@@ -118,13 +123,13 @@ def process_image(image_path, prompt_path, model_id=None):
         inferenceConfig={"temperature": 0.0}
     )
     
-    # Extract and return response
+    # Extract response text
     response_text = response["output"]["message"]["content"][0]["text"]
     
-    # Track cost
-    input_tokens = cost_tracker.estimate_tokens(user_message)
-    output_tokens = cost_tracker.estimate_tokens(response_text, is_output=True)
-    cost_tracker.track_request(model_id, input_tokens, output_tokens)
+    # Use actual token counts reported by Bedrock (not estimates)
+    usage = response.get("usage", {})
+    input_tokens = usage.get("inputTokens", cost_tracker.estimate_tokens(user_message))
+    output_tokens = usage.get("outputTokens", cost_tracker.estimate_tokens(response_text, is_output=True))
     
     # Clean up the response text by removing common prefixes
     prefixes_to_remove = [
@@ -150,7 +155,7 @@ def process_image(image_path, prompt_path, model_id=None):
             print("Could not find field list in response. Please check the model output.")
     
     print(response_text)
-    return response_text
+    return response_text, input_tokens, output_tokens
 
 def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=None, skip_images=None):
     """Process multiple images from a folder
@@ -246,13 +251,11 @@ def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=N
         
         try:
             # Process the image using the selected model
-            response_text = process_image(image_path, prompt_path, model_id)
+            response_text, input_tokens, output_tokens = process_image(image_path, prompt_path, model_id)
             
-            # Get token counts for this request
-            with open(prompt_path, "r", encoding="utf-8") as f:
-                user_message = f.read().strip()
-            input_tokens = cost_tracker.estimate_tokens(user_message)
-            output_tokens = cost_tracker.estimate_tokens(response_text, is_output=True)
+            # Track actual tokens in the cost tracker
+            cost_tracker.track_request(model_id, input_tokens, output_tokens)
+            print(f"  Tokens — Input: {input_tokens:,}  |  Output: {output_tokens:,}")
             
             # Get the image URL if available
             # Handle segmented image names by removing '_segmentation' suffix when looking up URLs
