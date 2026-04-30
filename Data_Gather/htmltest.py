@@ -215,6 +215,8 @@ def fetch_image_urls(
 
     print(f"\n  Processing {total} specimen(s) for image URLs…")
 
+    MAX_RETRIES = 3
+
     for idx, row in df.head(total).iterrows():
         occid = row.get("Symbiota ID", "")
 
@@ -223,38 +225,53 @@ def fetch_image_urls(
 
         url = IMAGE_TAB_URL.format(occid=occid)
 
-        try:
-            img_resp = session.get(url, timeout=15)
-            img_resp.raise_for_status()
-            img_soup = BeautifulSoup(img_resp.text, "html.parser")
+        web_url = ""
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                img_resp = session.get(url, timeout=15)
 
-            web_url = ""
+                # ── Rate-limit: back off and retry ────────────────────────────
+                if img_resp.status_code == 429:
+                    wait = 2 ** attempt  # 2s, 4s, 8s
+                    print(f"    ⏳ 429 rate-limited for occid {occid} "
+                          f"(attempt {attempt}/{MAX_RETRIES}) — waiting {wait}s…")
+                    time.sleep(wait)
+                    continue
 
-            # Method 1: anchor with fieldmuseum.org JPG
-            for a_tag in img_soup.find_all("a", href=True):
-                href = a_tag["href"]
-                if "fm-digital-assets.fieldmuseum.org" in href and href.endswith(".jpg"):
-                    web_url = href
-                    break
+                img_resp.raise_for_status()
+                img_soup = BeautifulSoup(img_resp.text, "html.parser")
 
-            # Method 2: "Web URL:" label → next anchor
-            if not web_url:
-                for b_tag in img_soup.find_all("b"):
-                    if "Web URL" in b_tag.get_text():
-                        next_a = b_tag.find_next("a", href=True)
-                        if next_a:
-                            web_url = next_a.get("href", "")
+                # Method 1: anchor with fieldmuseum.org JPG
+                for a_tag in img_soup.find_all("a", href=True):
+                    href = a_tag["href"]
+                    if "fm-digital-assets.fieldmuseum.org" in href and href.endswith(".jpg"):
+                        web_url = href
                         break
 
-            df.at[idx, "Image_URL"] = web_url
+                # Method 2: "Web URL:" label → next anchor
+                if not web_url:
+                    for b_tag in img_soup.find_all("b"):
+                        if "Web URL" in b_tag.get_text():
+                            next_a = b_tag.find_next("a", href=True)
+                            if next_a:
+                                web_url = next_a.get("href", "")
+                            break
 
-            if (idx + 1) % progress_every == 0:
-                print(f"    → {idx + 1}/{total} processed")
+                break  # success — exit retry loop
 
-            time.sleep(0.1)
+            except Exception as exc:
+                print(f"    ⚠  Error for occid {occid} (attempt {attempt}/{MAX_RETRIES}): {exc}")
+                if attempt < MAX_RETRIES:
+                    time.sleep(2 ** attempt)
 
-        except Exception as exc:
-            print(f"    ⚠  Error for occid {occid}: {exc}")
+        df.at[idx, "Image_URL"] = web_url
+        if not web_url:
+            print(f"    ✗  No image URL found for occid {occid} after {MAX_RETRIES} attempts.")
+
+        if (idx + 1) % progress_every == 0:
+            print(f"    → {idx + 1}/{total} processed")
+
+        time.sleep(0.5)  # polite delay between specimens
 
     found = df["Image_URL"].apply(lambda x: bool(x)).sum()
     print(f"  Found image URLs for {found}/{total} specimens.")

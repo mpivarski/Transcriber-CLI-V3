@@ -164,7 +164,7 @@ def _do_data_gather(session) -> None:
     # ── Confirmation ─────────────────────────────────────────────────────────
     print()
     _section("Step 3 — Confirm & Run")
-    print(f"  URL     : {table_url[:70]}…")
+    print(f"  URL     : {table_url[:1000]}…")
     print(f"  Entries : {'All' if row_limit is None else row_limit}")
     print(f"  Output  : {output_file}")
     print()
@@ -194,13 +194,43 @@ def _do_data_gather(session) -> None:
     _info("Fetching image URLs (this may take a while)…")
     df = fetch_image_urls(session, df, limit=None)
 
-    # ── Save ──────────────────────────────────────────────────────────────────
+    # ── Save CSV ──────────────────────────────────────────────────────────────
     try:
         save_csv(df, output_file)
         print()
         _success(f"Saved CSV → {output_file}")
     except Exception as exc:
         _error(f"Could not save file: {exc}")
+        return
+
+    # ── Export image-URL TXT ────────────────────────────────────────────────
+    print()
+    _section("Step 4 — Export Image URLs (optional)")
+    _info("Exports the fetched image URLs (one per line), skipping any that failed.")
+    print()
+
+    if _ask_yes_no("Save a TXT file of all image URLs (one per line)?", default="y"):
+        default_txt = output_file.replace(".csv", "_image_urls.txt")
+        txt_file = _ask("Save TXT as", default=default_txt)
+        if not txt_file.endswith(".txt"):
+            txt_file += ".txt"
+        try:
+            # Image_URL is still a separate column in the in-memory df at this
+            # point — save_csv only swaps it into Symbiota ID in a local copy.
+            col_name = "Image_URL"
+            if col_name not in df.columns:
+                _error("No 'Image_URL' column found — were image URLs fetched? Skipping TXT export.")
+            else:
+                urls = [str(u).strip() for u in df[col_name] if str(u).strip()]
+                with open(txt_file, "w", encoding="utf-8") as fh:
+                    for url in urls:
+                        fh.write(url + "\n")
+                print()
+                _success(f"Saved image URLs → {txt_file}  ({len(urls)} URLs)")
+        except Exception as exc:
+            _error(f"Could not save TXT file: {exc}")
+    else:
+        _info("Skipping TXT export.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
