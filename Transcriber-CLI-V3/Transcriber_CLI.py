@@ -506,7 +506,7 @@ def resume_run_menu():
             print("Please enter a valid number or 'back'")
 
 def main():
-    tprint("Transcriber-CLI-V2")
+    tprint("Transcriber-CLI-V3")
     print("Created by: Riley Herbst")
     print(85*"=")
     print("Welcome to the Field Museum transcriber-cli, this is an all-purpose image transcriber.")
