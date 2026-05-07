@@ -78,6 +78,13 @@ PORTAL_EXTRA_COLUMNS = {
     "typeStatus":          "typeStatus",
 }
 
+# Fixed columns stamped onto EVERY output row (per CSV_Instructions)
+FIXED_COLUMNS = {
+    "collectionCode":       "Botany",
+    "ownerInstitutionCode": "F",
+    "processingStatus":     "unprocessed",
+}
+
 # Values that should be treated as "empty" / no data
 EMPTY_VALUES = {"", "N/A", "n/a", "NA", "na", "none", "None"}
 
@@ -186,6 +193,23 @@ def clean_output_df(df: pd.DataFrame, join_col: str) -> pd.DataFrame:
         df = df[~all_empty].reset_index(drop=True)
         _info(f"Dropped {dropped} rows that became empty after cleaning")
 
+    return df
+
+
+def add_fixed_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Stamp fixed constant values onto every row as the last columns
+    (before dataGeneralizations).
+
+    Per CSV_Instructions:
+      collectionCode       = Botany
+      ownerInstitutionCode = F
+      processingStatus     = unprocessed
+    """
+    _sec("Adding Fixed Columns (collectionCode / ownerInstitutionCode / processingStatus)")
+    for col, val in FIXED_COLUMNS.items():
+        df[col] = val
+        _ok(f"{col} = '{val}'  →  set on {len(df):,} rows")
     return df
 
 
@@ -496,6 +520,9 @@ def main() -> None:
 
     # Apply all cleaning rules from CSV_Instructions
     sparse_df = clean_output_df(sparse_df, first_join)
+
+    # Stamp fixed columns (collectionCode, ownerInstitutionCode, processingStatus)
+    sparse_df = add_fixed_columns(sparse_df)
 
     # Add dataGeneralizations AFTER cleaning so only surviving fields are listed
     sparse_df = add_data_generalizations(sparse_df, first_join)
