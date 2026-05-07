@@ -19,7 +19,7 @@ Transcriber CLI is designed to process and transcribe text from herbarium specim
 - **Second Shot**: Processes Images once more. (First shot results + Image) for another pass
 
 Implemented as of 5/2026: 
-Data Gathering feature which pulls specimen information directly from the Bryophyte Portal based on a specific search inquiry. This feature helps gather supporting data for transcriptions and can be used as part of the overall transcription workflow. See the Data Gather section of the README for more information.
+Data Gathering feature which pulls specimen information directly from the Bryophyte Portal based on a specific search inquiry. This feature helps gather supporting data for transcriptions and can be used as part of the overall transcription workflow. See the [Data Gather README](https://github.com/mpivarski/Transcriber-CLI-V3/blob/main/Data_Gather/README.md) for more information.
 
 
 ## Prerequisites
