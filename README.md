@@ -100,8 +100,13 @@ The tool supports multiple AWS Bedrock models:
 - Claude 4.1 Opus
 - LLama 3.2 90b 
 - LLama 4 17b
-- Amazon Nova-lite,pro,premier
+- LLama 4 Maverick
+- Amazon Nova-lite
+- Amazon Nova-lite 2
+- Amazon Nova Pro
+- Amazon Nova Premier
 - Mistral Pixtral Large
+- Qwen 3
 
 ##### More models will be added as they come out. 
 
