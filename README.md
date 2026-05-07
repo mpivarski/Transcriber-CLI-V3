@@ -98,6 +98,7 @@ The tool supports multiple AWS Bedrock models:
 - Claude 4.5 Sonnet
 - Claude 4 Opus
 - Claude 4.1 Opus
+- Google.gemma-3-27b-i
 - LLama 3.2 90b 
 - LLama 4 17b
 - LLama 4 Maverick
