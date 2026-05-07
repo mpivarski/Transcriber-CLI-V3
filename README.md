@@ -18,6 +18,9 @@ Transcriber CLI is designed to process and transcribe text from herbarium specim
 - **First Shot**: Processes full images to extract label information
 - **Second Shot**: Processes Images once more. (First shot results + Image) for another pass
 
+Implemented as of 5/2026: 
+Data Gathering feature which pulls specimen information directly from the Bryophyte Portal based on a specific search inquiry. This feature helps gather supporting data for transcriptions and can be used as part of the overall transcription workflow. See the [Data Gather README](https://github.com/mpivarski/Transcriber-CLI-V3/blob/main/Data_Gather/README.md) for more information.
+
 
 ## Prerequisites
 
@@ -29,7 +32,7 @@ Transcriber CLI is designed to process and transcribe text from herbarium specim
 
 1. Clone this repository:
    ```
-   git clone https://github.com/rherbst123/Transcriber-CLI-V2
+   git clone https://github.com/mpivarski/Transcriber-CLI-V3
    cd Transcriber_CLI
    ```
 2. 
@@ -41,6 +44,7 @@ Transcriber CLI is designed to process and transcribe text from herbarium specim
     
    ```
    pip install -r requirements.txt
+   pip install pytesseract
    ```
 
 ## Usage
@@ -98,10 +102,17 @@ The tool supports multiple AWS Bedrock models:
 - Claude 4.5 Sonnet
 - Claude 4 Opus
 - Claude 4.1 Opus
+- Google.gemma-3-27b-i
 - LLama 3.2 90b 
 - LLama 4 17b
-- Amazon Nova-lite,pro,premier
+- LLama 4 Maverick
+- Amazon Nova-lite
+- Amazon Nova-lite 2
+- Amazon Nova Pro
+- Amazon Nova Premier
 - Mistral Pixtral Large
+- Mistral Large 2502
+- Qwen 3
 
 ##### More models will be added as they come out. 
 
