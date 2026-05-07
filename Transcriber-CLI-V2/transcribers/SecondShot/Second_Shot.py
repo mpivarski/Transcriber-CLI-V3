@@ -1,4 +1,4 @@
-#import boto3
+import boto3
 from PIL import Image
 import io
 import os
@@ -130,18 +130,36 @@ def process_image(image_path, prompt_path, model_id):
     print(response_text)
     return response_text
 
-def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id=None):
-    """Verify and correct first shot transcription results"""
+def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None):
+    """Verify and correct first shot transcription results
+    
+    Args:
+        base_folder: Path to the base folder containing images
+        first_shot_json_path: Path to the first shot batch JSON file
+        output_dir: Output directory for second shot results
+        run_name: Name of the run
+        model_id: Model ID to use for verification
+        skip_images: Set of image names to skip (for resuming runs)
+    """
+    if skip_images is None:
+        skip_images = set()
+        
     if model_id is None:
         model_id = select_model()
     
     # Load URL mapping if it exists (for downloaded images)
     url_map = {}
-    # Try multiple locations for url_map.json
+    # Try multiple locations for url_map.json (expanded search for different folder structures)
+    from helpers.cost_analysis import get_output_base_path
+    output_base = str(get_output_base_path())
+    
     url_map_locations = [
-        os.path.join(base_folder, 'url_map.json'),  # Original location
-        os.path.join(base_folder, 'temp_downloads', 'url_map.json'),  # Common download location
-        os.path.join(os.path.dirname(base_folder), 'temp_downloads', 'url_map.json'),  # Parent dir download location
+        os.path.join(base_folder, 'url_map.json'),  # Same folder
+        os.path.join(base_folder, 'temp_downloads', 'url_map.json'),  # Subfolder
+        os.path.join(os.path.dirname(base_folder), 'url_map.json'),  # Parent folder
+        os.path.join(os.path.dirname(base_folder), 'temp_downloads', 'url_map.json'),  # Parent's temp_downloads
+        os.path.join(output_base, 'temp_downloads', 'url_map.json'),  # Global temp_downloads location
+        os.path.join(os.path.dirname(os.path.dirname(base_folder)), 'temp_downloads', 'url_map.json'),  # Grandparent's temp_downloads
     ]
     
     url_map_path = None
@@ -169,8 +187,16 @@ def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, m
     print(f"\nVerifying {len(transcriptions)} first shot transcriptions")
     
     all_transcriptions = []
+    skipped_count = 0
     for i, transcription in enumerate(transcriptions, 1):
         image_name = transcription['image_name']
+        
+        # Skip if already processed (for resume functionality)
+        if image_name in skip_images:
+            skipped_count += 1
+            print(f"Skipping {i}/{len(transcriptions)}: {image_name} (already processed)")
+            continue
+        
         # Prioritize URL from first shot, fall back to URL map if not available
         # Handle segmented image names by removing '_segmentation' suffix when looking up URLs
         image_name_for_url_lookup = image_name
@@ -217,16 +243,49 @@ def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, m
         print(f"\n{'='*50}")
         print(f"Verifying transcription {i}/{len(transcriptions)}: {image_name}")
         
-        # Find image file
+        # Find image file - search in multiple possible locations
         image_path = None
-        for ext in ['.png', '.jpg', '.jpeg']:
-            possible_paths = list(Path(base_folder).glob(f"**/*{image_name}"))
-            if possible_paths:
-                image_path = possible_paths[0]
+        
+        # Build list of directories to search
+        search_dirs = [
+            base_folder,
+            os.path.join(base_folder, "Segmented_Images"),
+            os.path.join(base_folder, "Full_Images"),
+            os.path.join(base_folder, "temp_downloads"),
+            os.path.join(os.path.dirname(base_folder), "Segmented_Images"),
+            os.path.join(output_base, "temp_downloads"),
+        ]
+        
+        # Try to find image in each directory
+        for search_dir in search_dirs:
+            if not os.path.exists(search_dir):
+                continue
+            for ext in ['.png', '.jpg', '.jpeg', '']:  # Empty string for exact match
+                # Try exact match first
+                exact_path = Path(search_dir) / image_name
+                if exact_path.exists():
+                    image_path = exact_path
+                    break
+                # Try glob search
+                possible_paths = list(Path(search_dir).glob(f"*{image_name}*"))
+                if possible_paths:
+                    image_path = possible_paths[0]
+                    break
+            if image_path:
+                print(f"Found image at: {image_path}")
                 break
         
         if not image_path:
-            print(f"Error: Could not find image file for {image_name}. Skipping.")
+            print(f"Error: Could not find image file for {image_name}. Searched in:")
+            for d in search_dirs:
+                if os.path.exists(d):
+                    print(f"  - {d}")
+            error_response = {
+                "error": f"Image file not found: {image_name}",
+                "image_name": image_name,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+            all_transcriptions.append(error_response)
             continue
         
         try:
@@ -318,11 +377,13 @@ def verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, m
         batch_filepath = create_batch_json_file(output_dir, run_name, "second_shot_verification", all_transcriptions)
         print(f"\nBatch verification JSON file created: {batch_filepath}")
     
+    if skipped_count > 0:
+        print(f"\nSkipped {skipped_count} already processed images")
     print(f"Second Shot verification completed! JSON files saved to {output_dir}")
     return all_transcriptions
 
 # Backward compatibility alias
-def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, output_dir, run_name, model_id=None):
+def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, output_dir, run_name, model_id=None, skip_images=None):
     """Backward compatibility wrapper for verify_first_shot
     
     Args:
@@ -332,8 +393,9 @@ def process_with_first_shot(base_folder, prompt_path, first_shot_json_path, outp
         output_dir: Output directory for second shot results
         run_name: Name of the run
         model_id: Model ID to use for verification
+        skip_images: Set of image names to skip (for resuming runs)
     """
-    return verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id)
+    return verify_first_shot(base_folder, first_shot_json_path, output_dir, run_name, model_id, skip_images)
 
 if __name__ == "__main__":
     print("Taking Another Look...")

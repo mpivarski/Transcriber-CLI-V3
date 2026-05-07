@@ -1,4 +1,4 @@
-#import boto3
+import boto3
 from PIL import Image
 import io
 import os
@@ -151,7 +151,7 @@ def process_image(image_path, prompt_path, model_id=None):
     print(response_text)
     return response_text
 
-def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=None):
+def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=None, skip_images=None):
     """Process multiple images from a folder
     
     Args:
@@ -160,22 +160,47 @@ def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=N
         output_dir: Path to save the transcription results
         date_folder: Name of the date folder for naming the output file
         model_id: Pre-selected model ID (optional)
+        skip_images: Set of image names to skip (for resuming runs)
     """
-    # Check for Full_Images folder first (for organized images)
-    collaged_folder = os.path.join(base_folder, "Full_Images")
-    if os.path.exists(collaged_folder):
-        images_folder = collaged_folder
-    else:
-        # Use base folder directly for downloaded images
-        images_folder = base_folder
+    if skip_images is None:
+        skip_images = set()
+    
+    # Check for various possible image locations (in order of priority)
+    possible_image_folders = [
+        os.path.join(base_folder, "Full_Images"),  # Organized images
+        os.path.join(base_folder, "Segmented_Images"),  # Segmented images subfolder
+        os.path.join(base_folder, "temp_downloads"),  # Downloaded images subfolder
+        base_folder  # Direct folder (fallback)
+    ]
+    
+    images_folder = base_folder  # Default fallback
+    for folder in possible_image_folders:
+        if os.path.exists(folder):
+            # Check if folder actually contains images
+            image_extensions_check = ['.png', '.jpg', '.jpeg']
+            has_images = any(
+                list(Path(folder).glob(f'*{ext}')) 
+                for ext in image_extensions_check
+            )
+            if has_images:
+                images_folder = folder
+                print(f"Found images in: {folder}")
+                break
     
     # Load URL mapping if it exists (for downloaded images)
     url_map = {}
-    # Try multiple locations for url_map.json
+    # Try multiple locations for url_map.json (expanded search for different folder structures)
+    # Get the output base path for searching temp_downloads at root level
+    from helpers.cost_analysis import get_output_base_path
+    output_base = str(get_output_base_path())
+    
     url_map_locations = [
-        os.path.join(base_folder, 'url_map.json'),  # Original location
-        os.path.join(base_folder, 'temp_downloads', 'url_map.json'),  # Common download location
-        os.path.join(os.path.dirname(base_folder), 'temp_downloads', 'url_map.json'),  # Parent dir download location
+        os.path.join(base_folder, 'url_map.json'),  # Same folder
+        os.path.join(base_folder, 'temp_downloads', 'url_map.json'),  # Subfolder
+        os.path.join(os.path.dirname(base_folder), 'url_map.json'),  # Parent folder
+        os.path.join(os.path.dirname(base_folder), 'temp_downloads', 'url_map.json'),  # Parent's temp_downloads
+        os.path.join(output_base, 'temp_downloads', 'url_map.json'),  # Global temp_downloads location
+        os.path.join(os.path.dirname(os.path.dirname(base_folder)), 'temp_downloads', 'url_map.json'),  # Grandparent's temp_downloads
     ]
     
     url_map_path = None
@@ -229,7 +254,14 @@ def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=N
     
     # Process each image
     print(f"\nFound {len(image_files)} images to process")
+    skipped_count = 0
     for i, image_path in enumerate(image_files, 1):
+        # Skip if already processed (for resume functionality)
+        if image_path.name in skip_images:
+            skipped_count += 1
+            print(f"Skipping {i}/{len(image_files)}: {image_path.name} (already processed)")
+            continue
+            
         print(50*"=")
         print(f"Processing image {i}/{len(image_files)}: {image_path.name}")
         
@@ -287,6 +319,8 @@ def process_images(base_folder, prompt_path, output_dir, date_folder, model_id=N
         batch_filepath = create_batch_json_file(output_dir, date_folder, "first_shot", all_transcriptions)
         print(f"Batch JSON file created: {batch_filepath}")
     
+    if skipped_count > 0:
+        print(f"\nSkipped {skipped_count} already processed images")
     print(f"First Shot processing completed successfully! JSON files saved to {output_dir}")
 
 # Allow running this module directly for testing
