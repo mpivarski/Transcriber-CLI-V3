@@ -111,6 +111,7 @@ The tool supports multiple AWS Bedrock models:
 - Amazon Nova Pro
 - Amazon Nova Premier
 - Mistral Pixtral Large
+- Mistral Large 2502
 - Qwen 3
 
 ##### More models will be added as they come out. 
