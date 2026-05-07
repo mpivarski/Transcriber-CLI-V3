@@ -224,7 +224,7 @@ def add_data_generalizations(df: pd.DataFrame, join_col: str) -> pd.DataFrame:
     """
     _sec("Adding dataGeneralizations Column")
 
-    skip_cols = {join_col, "dataGeneralizations"}
+    skip_cols = {join_col, "dataGeneralizations"} | set(FIXED_COLUMNS.keys())
 
     def _build_note(row: pd.Series) -> str:
         added = [
