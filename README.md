@@ -57,8 +57,8 @@ python TranscribeCLI.py
 
 The tool will:
 1. Ask you to name the run
-2. How many Runs to do
-3. Choose Model For First run
+2. How many Shots to do (1 or 2)
+3. Choose Model For First Shot
 4. Let Run complete
 5. Ask Model for second shot (If chosen)
 6. Output a completed .csv file to your desktop with a cost analysis and raw .json files 
