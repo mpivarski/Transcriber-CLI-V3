@@ -29,8 +29,8 @@ Transcriber CLI is designed to process and transcribe text from herbarium specim
 
 1. Clone this repository:
    ```
-   git clone https://github.com/rherbst123/Transcriber-CLI-V2
-   cd Transcriber_CLI
+  git clone https://github.com/mpivarski/Transcriber-CLI-V3
+  cd Transcriber_CLI
    ```
 2. While a virtual enviroment is not required it is reccomended 
    ```
@@ -67,15 +67,23 @@ The tool will:
 ## Supported AI Models
 
 The tool supports multiple AWS Bedrock models:
-- Claude 3 Sonnet
-- Claude 3.7 Sonnet
-- Claude 4.1 Opus
-- Claude 4 Sonnet
-- Llama 3 (90B)
-- Llama 4 Maverick 17b
-- Amazon Nova Premier
-- Amazon Nova Pro
-- Mistral Pixtral Large
+Claude 3 Sonnet
+Claude 3.7 Sonnet
+Claude 4 Sonnet
+Claude 4.5 Sonnet
+Claude 4 Opus
+Claude 4.1 Opus
+Google.gemma-3-27b-i
+LLama 3.2 90b
+LLama 4 17b
+LLama 4 Maverick
+Amazon Nova-lite
+Amazon Nova-lite 2
+Amazon Nova Pro
+Amazon Nova Premier
+Mistral Pixtral Large
+Mistral Large 2502
+Qwen 3
 
 ##### More models will be added as they come out. 
 
