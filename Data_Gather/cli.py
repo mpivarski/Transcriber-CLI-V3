@@ -153,7 +153,15 @@ def _do_data_gather(session) -> None:
             break
         except ValueError:
             _error("Please enter a positive whole number, or press Enter to get all rows.")
+    # ── Selection mode ────────────────────────────────────────
+    random_selection = False
 
+    if row_limit is not None:
+        print()
+        random_selection = _ask_yes_no(
+        "Select entries randomly?",
+        default="n"
+    )
     # ── Output filename ───────────────────────────────────────────────────────
     print()
     _info("Output file")
@@ -186,9 +194,15 @@ def _do_data_gather(session) -> None:
 
     # ── Slice to requested row count ──────────────────────────────────────────
     if row_limit is not None:
-        df = df.head(row_limit)
-        _info(f"Trimmed to first {row_limit} entries.")
+        
+        if random_selection:
+            sample_size = min (row_limit, len(df)) 
+            df = df.sample(n=sample_size)
 
+            _info(f"Randomly selected {sample_size} entries.")
+        else:
+            df = df.head(row_limit)
+            _info(f"Trimmed to first {row_limit} entries.")
     # ── Fetch image URLs ──────────────────────────────────────────────────────
     print()
     _info("Fetching image URLs (this may take a while)…")
