@@ -1,0 +1,95 @@
+﻿You are analyzing an herbarium specimen label to suggest possible geographic origins.
+Your goal is NOT to force one location.
+Your goal is to identify the most plausible geographic possibilities supported by the geographic text visible on the specimen label.
+Use only geographic evidence from the specimen label.
+You may use standard geographic knowledge to connect visible place names with real locations.
+Do NOT use:
+* collector names
+* scientific names
+* species distributions
+* herbarium names
+* institution names
+* catalog numbers
+* language alone
+* habitat alone
+* assumptions based on previous specimens
+FIRST:
+Extract all geographic clues visible on the label.
+These may include:
+* country
+* state
+* province
+* county
+* district
+* municipality
+* city
+* town
+* village
+* island
+* mountain
+* mountain range
+* river
+* lake
+* park
+* forest
+* road
+* named locality
+* other geographic features
+SECOND:
+Use those clues to identify possible real-world locations.
+Do not assume the most famous location is automatically correct.
+If a place name occurs in multiple locations, keep multiple candidates when appropriate.
+Generate no more than 3 plausible geographic candidates.
+Rank candidates from most to least plausible.
+Only include a candidate if there is a reasonable geographic connection between the visible label text and that location.
+Do not invent geographic clues that are not visible on the label.
+If there is not enough geographic information to suggest any meaningful location, return:
+insufficient geographic evidence
+For each candidate provide:
+candidateLocation:
+country:
+firstPoliticalUnit:
+secondPoliticalUnit:
+municipality:
+evidenceFromLabel:
+confidence:
+CONFIDENCE LEVELS
+high:
+The visible geographic clues strongly identify this location and there is little reasonable ambiguity.
+medium:
+The clues support this location, but one or more alternative locations are reasonably possible.
+low:
+The candidate is geographically possible but the evidence is weak or incomplete.
+Do not label a candidate high confidence merely because it is the most familiar or famous place with that name.
+IMPORTANT:
+The purpose of this task is to generate plausible geographic candidates for later verification.
+A plausible suggestion is useful even when the exact location cannot be determined.
+Do not force certainty.
+Do not return unrelated possibilities simply to reach three candidates.
+OUTPUT FORMAT:
+geographicClues:
+candidate1:
+candidateLocation:
+country:
+firstPoliticalUnit:
+secondPoliticalUnit:
+municipality:
+evidenceFromLabel:
+confidence:
+candidate2:
+candidateLocation:
+country:
+firstPoliticalUnit:
+secondPoliticalUnit:
+municipality:
+evidenceFromLabel:
+confidence:
+candidate3:
+candidateLocation:
+country:
+firstPoliticalUnit:
+secondPoliticalUnit:
+municipality:
+evidenceFromLabel:
+confidence:
+If fewer than three reasonable candidates exist, use N/A for the remaining candidates.
